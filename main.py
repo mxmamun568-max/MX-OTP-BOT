@@ -1,57 +1,36 @@
 import http.server
-import socketserver
 import threading
-
 import requests
+import json
+import time
 
-# ==========================================
-# ( CONFIGURATIONS ) - আপনার সব সেটিং এখানে আছে
-# ==========================================
+# [ CONFIGURATIONS ] - আপনার তথ্য এখানে বসিয়ে নিন
+BOT_TOKEN = "7872695:AAEw9v21tKA-y_y4DYbMP-sJ7uUJa4V04Q"
+CHAT_ID = "-1002636261441"
+OTP_TOKEN = "MAMUNMAPIN"
+MINI_BOT_URL = "https://2009-Cloud/WebApp/news/public/api? # noqa: E501 /MXFASTOTP_BOT/panel"
+BUTTON_TEXT = "Open Mini Bot"
 
-BOT_TOKEN = "8850726955:AAEGe0VztKA-aLY_y4dYBHP-sz7UJa4V0kQ"
-CHAT_ID = "-1004360696144"
-API_TOKEN = "MXMPJURD1"
-BASE_URL = (
-    "https://api.2009.cloud/WK547FLFKOU/tnews/8public/api"  # noqa: E501
-)
-PANEL_URL = "https://t.me/MXFASTOTP_Bot/panel"
-BUTTON_TEXT = "🚀 Open Mini Bot"
-
-
-# টেলিগ্রাম থেকে নতুন টোকেন ট্র্যাকার গ্লোবালি
-sent_otp_keys = set()
-
-
+# টেলিক্রামের জন্য নতুন টুলের ফেসকাট ইত্যাদি
 def get_formatted_number(num):
-    # * থেকে কোনো নাম্বার বা অক্ষর থাকলে তা বাদ করা হবে ***
     if not num:
-        return "unknown"
-    clean = "".join(filter(str.isdigit, str(num)))
-    if len(clean) < 6:
-        return str(num)
-    prefix = clean[:3]
-    suffix = clean[-3:]
-    return f"{prefix}***{suffix}"
+        return {"country": "Unknown", "string": str(num)}
+    if len(num) == 6:
+        return {"country": "Bangladesh", "string": str(num)}
+    elif len(num) == 5:
+        return {"country": "India", "string": str(num)}
+    else:
+        return {"country": "Unknown", "string": str(num)}
 
-
-def send_telegram_message(
-    number, country, service, otp_code, ram_message, time_str
-):
-    # * প্রমিজ মেসেজ পাঠাতে সাহায্য করবেন ***
-    masked_num = get_formatted_number(number)
-
-    caption = f"""<b><# FAST OTP PANEL - NEW OTP RECEIVED#></b>
-
-📞Phone Number: <code>{masked_num}</code>
-🌐Country: <b>{country}</b>
-⚙️Service: <b>{service}</b>
-🔑OTP Code: <code>{otp_code}</code>
-🕒Time: <b>{time_str}</b>
-
-💬Message:
-<code>{ram_message}</code>
-
-🤖Automated Secure OTP System"""
+def send_telegram_message(number, country_service, otp_code, ram_message, time_str):
+    # অফিসিয়াল ফরম্যাট রেডি করা হচ্ছে ***
+    caption = f"""<b>⚡️ FAST OTP PANEL — NEW OTP RECEIVED</b><br><br>"
+    f"<b>📞 Phone Number:</b> <code>{number}</code><br>"
+    f"<b>🌍 Country:</b> {country_service}<br>"
+    f"<b>📱 Service:</b> {country_service}<br>"
+    f"<b>🔑 OTP Code:</b> <code>{otp_code}</code><br>"
+    f"<b>🕒 Time:</b> {time_str}<br><br>"
+    f"<b>🛡️ Automated Secure OTP System</b>"""
 
     payload = {
         "chat_id": CHAT_ID,
@@ -62,53 +41,49 @@ def send_telegram_message(
                 [
                     {
                         "text": BUTTON_TEXT,
-                        "url": f"https://{MINI_BOT_URL}"
-                        if not MINI_BOT_URL.startswith("http")
-                        else MINI_BOT_URL,
+                        "url": f"https://{MINI_BOT_URL}" if not MINI_BOT_URL.startswith("http") else MINI_BOT_URL
                     }
                 ]
             ]
-        },
+        }
     }
 
     try:
-        requests.post(
-            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-            json=payload,
-            timeout=10,
-        )
+        requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json=payload, timeout=10)
     except Exception as e:
         print(f"Error sending to Telegram: {e}")
 
-
 def check_and_forward_otps():
-    # * রেন্ডারকে সচল রাখতে এবং চেক করার কাজ করবেন ***
-    headers = {"AuthAPI": API_TOKEN}
-    try:
-        response = requests.get(
-            f"{BASE_URL}/otp", headers=headers, timeout=10
-        )
-        if response.status_code == 200:
-            ots = response.get("data", [])
-            for ot in ots:
-                num = ot.get("number", "")
-                msg = ot.get("message", "")
-                time_get = ot.get("time", "Just Now")
-                # বাকি কোড...
-    except Exception as e:
-        print(f"Error checking OTPs: {e}")
+    while True:
+        try:
+            url = f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates"
+            headers = {"Cache-Control": "no-cache"}
+            response = requests.get(url, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.get('result', [])
+                for msg in data:
+                    # প্রয়োজনীয় প্রসেসিং এখানে করা যেতে পারে
+                    pass
+        except Exception as e:
+            print(f"Error fetching OTP: {e}")
+        time.sleep(5)
 
+# Render-এর জন্য পোর্টিং রাখার ডামি সার্ভার
+PORT = 10000
 
-# Render-এর জন্য পোর্টের ব্যবস্থা (HTTP সার্ভার)
+class SimpleHandler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is running!")
+
 def run_server():
-    PORT = 10000
-    Handler = http.server.SimpleHTTPRequestHandler
-    with socketserver.TCPServer(("", PORT), Handler) as httpd:
-        print("serving at port", PORT)
-        httpd.serve_forever()
+    server = http.server.HTTPServer(('0.0.0.0', PORT), SimpleHandler)
+    server.serve_forever()
 
-
-server_thread = threading.Thread(target=run_server)
-server_thread.daemon = True
-server_thread.start()
+if __name__ == '__main__':
+    # ব্যাকগ্রাউন্ডে বট ও সার্ভার রান করা হচ্ছে
+    threading.Thread(target=check_and_forward_otps, daemon=True).start()
+    run_server()
     
