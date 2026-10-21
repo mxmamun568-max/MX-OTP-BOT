@@ -28,18 +28,16 @@ def get_formatted_number(num):
 
 def send_telegram_message(number, country, service, otp_code, ram_message, time_str):
     masked_num = get_formatted_number(number)
-    caption = f"""<b>⚡️ FAST OTP PANEL - NEW OTP RECEIVED</b>
-
-📞 Phone Number: <code>{masked_num}</code>
-🌐 Country: <b>{country}</b>
-⚙️ Service: <b>{service}</b>
-🔑 OTP Code: <code>{otp_code}</code>
-🕒 Time: <b>{time_str}</b>
-
-💬 Message:
-<code>{ram_message}</code>
-
-🤖 Automated Secure OTP System"""
+    caption = (
+        "<b>⚡️ FAST OTP PANEL - NEW OTP RECEIVED</b>\n\n"
+        f"📞 Phone Number: <code>{masked_num}</code>\n"
+        f"🌐 Country: <b>{country}</b>\n"
+        f"⚙️ Service: <b>{service}</b>\n"
+        f"🔑 OTP Code: <code>{otp_code}</code>\n"
+        f"🕒 Time: <b>{time_str}</b>\n\n"
+        f"💬 Message:\n<code>{ram_message}</code>\n\n"
+        "🤖 Automated Secure OTP System"
+    )
 
     payload = {
         "chat_id": CHAT_ID,
@@ -53,7 +51,8 @@ def send_telegram_message(number, country, service, otp_code, ram_message, time_
     }
 
     try:
-        requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json=payload, timeout=10)
+        response = requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json=payload, timeout=10)
+        print(f"Telegram API Response: {response.status_code}")
     except Exception as e:
         print(f"Error sending to Telegram: {e}")
 
@@ -61,8 +60,8 @@ def check_and_forward_otps():
     while True:
         headers = {"AuthAPI": API_TOKEN}
         try:
-            # API থেকে OTP ডাটা চেক করা
             response = requests.get(f"{BASE_URL}/otp", headers=headers, timeout=10)
+            print(f"API Fetch Status: {response.status_code}")
             if response.status_code == 200:
                 result = response.json()
                 ots = result.get("data", [])
@@ -113,4 +112,4 @@ if __name__ == '__main__':
     threading.Thread(target=check_and_forward_otps, daemon=True).start()
     # ওয়েব সার্ভার চালু
     run_server()
-                        
+    
