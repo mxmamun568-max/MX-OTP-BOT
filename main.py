@@ -8,10 +8,10 @@ import requests
 
 # ============== CONFIGURATION ==============
 
-BOT_TOKEN = os.getenv("BOT_TOKEN", "")
-CHAT_ID = os.getenv("CHAT_ID", "")
-API_TOKEN = os.getenv("API_TOKEN", "")
-BASE_URL = os.getenv("BASE_URL", "").rstrip("/")
+BOT_TOKEN = os.getenv("8858726595:AAEGt6vzteA-ALY_y4GfBWP-sz7UJ4v0K5Q", "")
+CHAT_ID = os.getenv("-1004366096144", "")
+API_TOKEN = os.getenv("MWMFJUUNQRI", "")
+BASE_URL = os.getenv("https://api.2oo9.cloud/MXS47FLFX0U/tnevs/@public/api", "").rstrip("/")
 
 PORT = int(os.getenv("PORT", "10000"))
 
