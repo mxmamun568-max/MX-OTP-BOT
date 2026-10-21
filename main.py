@@ -1,148 +1,99 @@
-
-import os
-import time
-import threading
 import http.server
+import json
 import socketserver
+import threading
+import time
 import requests
 
-# ============== CONFIGURATION ==============
+# [ CONFIGURATIONS ] - আপনার তথ্য এখানে বসিয়ে নিন
+BOT_TOKEN = "8850726955:AAEGe0VztKA-aLY_y4dYBHP-sz7UJa4V0kQ"
+CHAT_ID = "-1004360696144"
+API_TOKEN = "MWMFJUUNQRI"
+BASE_URL = "https://api.2009.cloud/WK547FLFKOU/tnews/8public/api"
+MINI_BOT_URL = "t.me/MXFastOTP1_Bot/panel"
+BUTTON_TEXT = "🚀 Open Mini Bot"
 
-BOT_TOKEN = os.getenv("8858726595:AAEGt6vzteA-ALY_y4GfBWP-sz7UJ4v0K5Q", "")
-CHAT_ID = os.getenv("-1004366096144", "")
-API_TOKEN = os.getenv("MWMFJUUNQRI", "")
-BASE_URL = os.getenv("https://api.2oo9.cloud/MXS47FLFX0U/tnevs/@public/api", "").rstrip("/")
+sent_otp_keys = set()
 
-PORT = int(os.getenv("PORT", "10000"))
+def get_formatted_number(num):
+    if not num:
+        return "Unknown"
+    clean = "".join(filter(str.isdigit, str(num)))
+    if len(clean) < 6:
+        return str(num)
+    prefix = clean[:3]
+    suffix = clean[-3:]
+    return f"{prefix}***{suffix}"
 
-session = requests.Session()
+def send_telegram_message(number, country, service, otp_code, ram_message, time_str):
+    masked_num = get_formatted_number(number)
+    caption = f"""<b>⚡️ FAST OTP PANEL - NEW OTP RECEIVED</b>
 
+📞 Phone Number: <code>{masked_num}</code>
+🌐 Country: <b>{country}</b>
+⚙️ Service: <b>{service}</b>
+🔑 OTP Code: <code>{otp_code}</code>
+🕒 Time: <b>{time_str}</b>
 
-def check_telegram():
-    """Check bot token and Telegram group access."""
+💬 Message:
+<code>{ram_message}</code>
 
-    if not BOT_TOKEN or not CHAT_ID:
-        print("ERROR: BOT_TOKEN or CHAT_ID is missing.")
-        return False
+🤖 Automated Secure OTP System"""
+
+    payload = {
+        "chat_id": CHAT_ID,
+        "text": caption,
+        "parse_mode": "HTML",
+        "reply_markup": {
+            "inline_keyboard": [
+                [{"text": BUTTON_TEXT, "url": f"https://{MINI_BOT_URL}"}]
+            ]
+        }
+    }
 
     try:
-        r = session.get(
-            f"https://api.telegram.org/bot{BOT_TOKEN}/getMe",
-            timeout=15
-        )
-        data = r.json()
-
-        if not data.get("ok"):
-            print("Telegram getMe error:", data)
-            return False
-
-        print("Telegram bot connection: OK")
-
-        test = session.post(
-            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-            json={
-                "chat_id": CHAT_ID,
-                "text": "✅ MX OTP BOT — Connection Test Successful"
-            },
-            timeout=15
-        )
-
-        result = test.json()
-
-        if not result.get("ok"):
-            print("Telegram sendMessage error:", result)
-            return False
-
-        print("Telegram group message: SUCCESS")
-        return True
-
+        requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json=payload, timeout=10)
     except Exception as e:
-        print("Telegram connection error:", str(e))
-        return False
+        print(f"Error sending to Telegram: {e}")
 
-
-def check_api():
-    """Check API availability without forwarding OTP contents."""
-
-    if not API_TOKEN or not BASE_URL:
-        print("ERROR: API_TOKEN or BASE_URL is missing.")
-        return
-
-    headers = {"mauthapi": API_TOKEN}
-
-    try:
-        r = session.get(
-            f"{BASE_URL}/success-otp",
-            headers=headers,
-            timeout=15
-        )
-
-        print("API HTTP status:", r.status_code)
-
-        if r.status_code != 200:
-            print("API request failed. Check API access and endpoint.")
-            return
-
-        try:
-            result = r.json()
-        except ValueError:
-            print("API error: response is not valid JSON.")
-            return
-
-        if not isinstance(result, dict):
-            print("API error: unexpected response format.")
-            return
-
-        records = result.get("data", [])
-
-        if not isinstance(records, list):
-            print("API error: 'data' is not a list.")
-            return
-
-        print("API connection: OK")
-        print("Records returned:", len(records))
-        print("OTP contents are not displayed or forwarded.")
-
-    except requests.RequestException as e:
-        print("API connection error:", str(e))
-
-
-def diagnostic_loop():
+def check_and_forward_otps():
     while True:
-        check_api()
-        time.sleep(30)
+        headers = {"AuthAPI": API_TOKEN}
+        try:
+            response = requests.get(f"{BASE_URL}/otp", headers=headers, timeout=10)
+            if response.status_code == 200:
+                result = response.json()
+                ots = result.get("data", [])
+                for item in ots:
+                    num = item.get("number", "")
+                    msg = item.get("message", "")
+                    time_val = item.get("time", "Just Now")
+                    unique_key = f"{num}_{msg}_{time_val}"
+                    
+                    if unique_key not in sent_otp_keys:
+                        # এখানে মেসেজ থেকে ওটিপি কোড বের করার লজিক প্রয়োজন হতে পারে
+                        otp_match = "" 
+                        send_telegram_message(num, "Global", "System", otp_match, msg, time_val)
+                        sent_otp_keys.add(unique_key)
+                        
+                if len(sent_otp_keys) > 500:
+                    sent_otp_keys.clear()
+                    
+        except Exception as e:
+            print(f"Error checking OTPs: {e}")
+            
+        time.sleep(3)
 
-
-class Handler(http.server.BaseHTTPRequestHandler):
-    def do_GET(self):
-        body = b"MX OTP BOT diagnostic service is running."
-
-        self.send_response(200)
-        self.send_header("Content-Type", "text/plain")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
-
-    def log_message(self, *args):
-        pass
-
+# Render-এর জন্য পোর্টিং রাখার ডামি সার্ভার
+PORT = 10000
 
 def run_server():
-    with socketserver.ThreadingTCPServer(
-        ("0.0.0.0", PORT), Handler
-    ) as server:
-        server.allow_reuse_address = True
-        print("Web server listening on port:", PORT)
-        server.serve_forever()
+    Handler = http.server.SimpleHTTPRequestHandler
+    with socketserver.TCPServer(("", PORT), Handler) as httpd:
+        print("serving at port", PORT)
+        httpd.serve_forever()
 
-
-if __name__ == "__main__":
-    check_telegram()
-
-    threading.Thread(
-        target=diagnostic_loop,
-        daemon=True
-    ).start()
-
+if __name__ == '__main__':
+    threading.Thread(target=check_and_forward_otps, daemon=True).start()
     run_server()
     
