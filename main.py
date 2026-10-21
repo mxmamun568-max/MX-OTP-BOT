@@ -13,7 +13,7 @@ BASE_URL = "https://api.2oo9.cloud/MXS47FLFX0U/tnevs/@public/api"
 MINI_BOT_URL = "t.me/MXFastOTP1_Bot/panel"
 BUTTON_TEXT = "🚀 Open Mini Bot"
 
-# Setup para iti panangilaksid kadagiti doble a mensahe
+# ডুপ্লিকেট মেসেজ রোধ করার জন্য সেট
 sent_otp_keys = set()
 
 def get_formatted_number(num):
@@ -61,6 +61,7 @@ def check_and_forward_otps():
         headers = {"mauthapi": API_TOKEN}
         try:
             response = requests.get(f"{BASE_URL}/getnum", headers=headers, timeout=10)
+            print(f"API Check Status: {response.status_code}, Response: {response.text[:100]}") # ডিবাগ করার জন্য প্রিন্ট করা হলো
             if response.status_code == 200:
                 result = response.json()
                 ots = result.get("data", [])
