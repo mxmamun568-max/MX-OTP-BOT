@@ -1,36 +1,45 @@
 import http.server
-import threading
-import requests
 import json
+import socketserver
+import threading
 import time
+import requests
 
-# [ CONFIGURATIONS ] - আপনার তথ্য এখানে বসিয়ে নিন
-BOT_TOKEN = "7872695:AAEw9v21tKA-y_y4DYbMP-sJ7uUJa4V04Q"
-CHAT_ID = "-1002636261441"
-OTP_TOKEN = "MAMUNMAPIN"
-MINI_BOT_URL = "https://2009-Cloud/WebApp/news/public/api? # noqa: E501 /MXFASTOTP_BOT/panel"
-BUTTON_TEXT = "Open Mini Bot"
+# ================= CONFIGURATIONS =================
+BOT_TOKEN = "8850726955:AAEGe0VztKA-aLY_y4dYBHP-sz7UJa4V0kQ"
+CHAT_ID = "-1004360696144"
+API_TOKEN = "MXMPJURD1"
+BASE_URL = "https://api.2009.cloud/WK547FLFKOU/tnews/8public/api"
+MINI_BOT_URL = "t.me/MXFastOTP1_Bot/panel"
+BUTTON_TEXT = "🚀 Open Mini Bot"
 
-# টেলিক্রামের জন্য নতুন টুলের ফেসকাট ইত্যাদি
+# ডুপ্লিকেট মেসেজ রোধ করার জন্য সেট
+sent_otp_keys = set()
+
 def get_formatted_number(num):
     if not num:
-        return {"country": "Unknown", "string": str(num)}
-    if len(num) == 6:
-        return {"country": "Bangladesh", "string": str(num)}
-    elif len(num) == 5:
-        return {"country": "India", "string": str(num)}
-    else:
-        return {"country": "Unknown", "string": str(num)}
+        return "Unknown"
+    clean = "".join(filter(str.isdigit, str(num)))
+    if len(clean) < 6:
+        return str(num)
+    prefix = clean[:3]
+    suffix = clean[-3:]
+    return f"{prefix}***{suffix}"
 
-def send_telegram_message(number, country_service, otp_code, ram_message, time_str):
-    # অফিসিয়াল ফরম্যাট রেডি করা হচ্ছে ***
-    caption = f"""<b>⚡️ FAST OTP PANEL — NEW OTP RECEIVED</b><br><br>"
-    f"<b>📞 Phone Number:</b> <code>{number}</code><br>"
-    f"<b>🌍 Country:</b> {country_service}<br>"
-    f"<b>📱 Service:</b> {country_service}<br>"
-    f"<b>🔑 OTP Code:</b> <code>{otp_code}</code><br>"
-    f"<b>🕒 Time:</b> {time_str}<br><br>"
-    f"<b>🛡️ Automated Secure OTP System</b>"""
+def send_telegram_message(number, country, service, otp_code, ram_message, time_str):
+    masked_num = get_formatted_number(number)
+    caption = f"""<b>⚡️ FAST OTP PANEL - NEW OTP RECEIVED</b>
+
+📞 Phone Number: <code>{masked_num}</code>
+🌐 Country: <b>{country}</b>
+⚙️ Service: <b>{service}</b>
+🔑 OTP Code: <code>{otp_code}</code>
+🕒 Time: <b>{time_str}</b>
+
+💬 Message:
+<code>{ram_message}</code>
+
+🤖 Automated Secure OTP System"""
 
     payload = {
         "chat_id": CHAT_ID,
@@ -38,12 +47,7 @@ def send_telegram_message(number, country_service, otp_code, ram_message, time_s
         "parse_mode": "HTML",
         "reply_markup": {
             "inline_keyboard": [
-                [
-                    {
-                        "text": BUTTON_TEXT,
-                        "url": f"https://{MINI_BOT_URL}" if not MINI_BOT_URL.startswith("http") else MINI_BOT_URL
-                    }
-                ]
+                [{"text": BUTTON_TEXT, "url": f"https://{MINI_BOT_URL}"}]
             ]
         }
     }
@@ -55,35 +59,58 @@ def send_telegram_message(number, country_service, otp_code, ram_message, time_s
 
 def check_and_forward_otps():
     while True:
+        headers = {"AuthAPI": API_TOKEN}
         try:
-            url = f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates"
-            headers = {"Cache-Control": "no-cache"}
-            response = requests.get(url, headers=headers, timeout=10)
-            
+            # API থেকে OTP ডাটা চেক করা
+            response = requests.get(f"{BASE_URL}/otp", headers=headers, timeout=10)
             if response.status_code == 200:
-                data = response.get('result', [])
-                for msg in data:
-                    # প্রয়োজনীয় প্রসেসিং এখানে করা যেতে পারে
-                    pass
+                result = response.json()
+                ots = result.get("data", [])
+                for item in ots:
+                    num = item.get("number", "")
+                    msg = item.get("message", "")
+                    country = item.get("country", "Global")
+                    service = item.get("service", "System")
+                    otp_code = item.get("otp", "")
+                    time_val = item.get("time", "Just Now")
+                    
+                    unique_key = f"{num}_{msg}_{time_val}"
+                    
+                    if unique_key not in sent_otp_keys:
+                        send_telegram_message(num, country, service, otp_code, msg, time_val)
+                        sent_otp_keys.add(unique_key)
+                        
+                if len(sent_otp_keys) > 500:
+                    sent_otp_keys.clear()
+                    
         except Exception as e:
-            print(f"Error fetching OTP: {e}")
-        time.sleep(5)
+            print(f"Error checking OTPs: {e}")
+            
+        time.sleep(3)
 
-# Render-এর জন্য পোর্টিং রাখার ডামি সার্ভার
+# Render সার্ভার সচল রাখার জন্য ডামি ওয়েব সার্ভার
 PORT = 10000
 
-class SimpleHandler(http.server.BaseHTTPRequestHandler):
+class SimpleHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
+        self.send_header("Content-type", "text/plain")
         self.end_headers()
-        self.wfile.write(b"Bot is running!")
+        self.wfile.write(b"Bot is running live!")
+
+    def do_HEAD(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
 
 def run_server():
-    server = http.server.HTTPServer(('0.0.0.0', PORT), SimpleHandler)
+    server = socketserver.TCPServer(("", PORT), SimpleHTTPRequestHandler)
+    print("Serving at port", PORT)
     server.serve_forever()
 
 if __name__ == '__main__':
-    # ব্যাকগ্রাউন্ডে বট ও সার্ভার রান করা হচ্ছে
+    # ব্যাকগ্রাউন্ডে ওটিপি চেক করার থ্রেড চালু
     threading.Thread(target=check_and_forward_otps, daemon=True).start()
+    # ওয়েব সার্ভার চালু
     run_server()
-    
+                        
