@@ -8,7 +8,7 @@ import requests
 # ================= CONFIGURATIONS =================
 BOT_TOKEN = "8850726955:AAEGe0VztKA-aLY_y4dYBHP-sz7UJa4V0kQ"
 CHAT_ID = "-1004360696144"
-API_TOKEN = "MXMPJURD1"
+API_TOKEN = "MWMFJUUNQRI"
 BASE_URL = "https://api.2009.cloud/WK547FLFKOU/tnews/8public/api"
 MINI_BOT_URL = "t.me/MXFastOTP1_Bot/panel"
 BUTTON_TEXT = "🚀 Open Mini Bot"
