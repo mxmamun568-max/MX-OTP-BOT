@@ -52,38 +52,52 @@ def send_telegram_message(number, country, service, otp_code, ram_message, time_
 
     try:
         response = requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json=payload, timeout=10)
-        print(f"Telegram API Response: {response.status_code}")
+        print(f"[TELEGRAM RESPONSE] Status: {response.status_code}, Body: {response.text}")
     except Exception as e:
-        print(f"Error sending to Telegram: {e}")
+        print(f"[TELEGRAM ERROR] {e}")
 
 def check_and_forward_otps():
     while True:
         headers = {"mauthapi": API_TOKEN}
         try:
             response = requests.get(f"{BASE_URL}/getnum", headers=headers, timeout=10)
-            print(f"API Check Status: {response.status_code}, Response: {response.text[:100]}") # ডিবাগ করার জন্য প্রিন্ট করা হলো
             if response.status_code == 200:
-                result = response.json()
-                ots = result.get("data", [])
-                for item in ots:
-                    num = item.get("number", "")
-                    msg = item.get("message", "")
-                    country = item.get("country", "Global")
-                    service = item.get("service", "System")
-                    otp_code = item.get("otp", "")
-                    time_val = item.get("time", "Just Now")
+                try:
+                    result = response.json()
+                    print(f"[API RAW RESPONSE] {result}") # এপিআই কী পাঠাচ্ছে তা লগে দেখা যাবে
                     
-                    unique_key = f"{num}_{msg}_{time_val}"
+                    # ডাটা লিস্ট বের করার চেষ্টা
+                    ots = []
+                    if isinstance(result, list):
+                        ots = result
+                    elif isinstance(result, dict):
+                        ots = result.get("data") or result.get("result") or result.get("messages") or []
                     
-                    if unique_key not in sent_otp_keys:
-                        send_telegram_message(num, country, service, otp_code, msg, time_val)
-                        sent_otp_keys.add(unique_key)
+                    for item in ots:
+                        if not isinstance(item, dict):
+                            continue
+                        num = item.get("number") or item.get("phone") or ""
+                        msg = item.get("message") or item.get("sms") or ""
+                        country = item.get("country", "Global")
+                        service = item.get("service", "System")
+                        otp_code = item.get("otp") or item.get("code") or ""
+                        time_val = item.get("time", "Just Now")
                         
-                if len(sent_otp_keys) > 500:
-                    sent_otp_keys.clear()
+                        unique_key = f"{num}_{msg}_{time_val}"
+                        
+                        if unique_key not in sent_otp_keys:
+                            send_telegram_message(num, country, service, otp_code, msg, time_val)
+                            sent_otp_keys.add(unique_key)
+                            
+                    if len(sent_otp_keys) > 500:
+                        sent_otp_keys.clear()
+                except Exception as json_err:
+                    print(f"[JSON PARSE ERROR] {json_err} - Raw Text: {response.text}")
+            else:
+                print(f"[API HTTP ERROR] Status: {response.status_code}")
                     
         except Exception as e:
-            print(f"Error checking OTPs: {e}")
+            print(f"[CHECK ERROR] {e}")
             
         time.sleep(3)
 
