@@ -6,14 +6,14 @@ import time
 import requests
 
 # ================= CONFIGURATIONS =================
-BOT_TOKEN = "8850726955:AAEGe0VztKA-aLY_y4dYBHP-sz7UJa4V0kQ"
-CHAT_ID = "-1004360696144"
+BOT_TOKEN = "8858726595:AAEGt6vzteA-ALY_y4GfBWP-sz7UJ4v0K5Q"
+CHAT_ID = "-1004366096144"
 API_TOKEN = "MWMFJUUNQRI"
-BASE_URL = "https://api.2009.cloud/WK547FLFKOU/tnews/8public/api"
+BASE_URL = "https://api.2oo9.cloud/MXS47FLFX0U/tnevs/@public/api"
 MINI_BOT_URL = "t.me/MXFastOTP1_Bot/panel"
 BUTTON_TEXT = "🚀 Open Mini Bot"
 
-# ডুপ্লিকেট মেসেজ রোধ করার জন্য সেট
+# Setup para iti panangilaksid kadagiti doble a mensahe
 sent_otp_keys = set()
 
 def get_formatted_number(num):
@@ -58,10 +58,9 @@ def send_telegram_message(number, country, service, otp_code, ram_message, time_
 
 def check_and_forward_otps():
     while True:
-        headers = {"AuthAPI": API_TOKEN}
+        headers = {"mauthapi": API_TOKEN}
         try:
-            response = requests.get(f"{BASE_URL}/otp", headers=headers, timeout=10)
-            print(f"API Fetch Status: {response.status_code}")
+            response = requests.get(f"{BASE_URL}/getnum", headers=headers, timeout=10)
             if response.status_code == 200:
                 result = response.json()
                 ots = result.get("data", [])
@@ -87,7 +86,6 @@ def check_and_forward_otps():
             
         time.sleep(3)
 
-# Render সার্ভার সচল রাখার জন্য ডামি ওয়েব সার্ভার
 PORT = 10000
 
 class SimpleHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
@@ -108,8 +106,6 @@ def run_server():
     server.serve_forever()
 
 if __name__ == '__main__':
-    # ব্যাকগ্রাউন্ডে ওটিপি চেক করার থ্রেড চালু
     threading.Thread(target=check_and_forward_otps, daemon=True).start()
-    # ওয়েব সার্ভার চালু
     run_server()
     
